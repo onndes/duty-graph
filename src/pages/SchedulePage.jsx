@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getParticipants } from '../db/participants';
 import { saveSchedule, getScheduleByWeek, getScheduleHistory } from '../db/schedules';
 import { generateWeekSchedule } from '../core/schedule/generateWeekSchedule';
 import { getMeta, setMeta } from '../db/meta';
+import { seedParticipants } from '../db/devSeed';
 
 function getMonday(dateStr) {
   const d = new Date(dateStr);
@@ -16,10 +17,16 @@ function SchedulePage() {
   const [week, setWeek] = useState(getMonday(new Date().toISOString()));
   const [schedule, setSchedule] = useState(null);
   const [history, setHistory] = useState([]);
+  const seededRef = useRef(false);
   const loadHistory = () => {
     getScheduleHistory().then(setHistory);
   };
   useEffect(() => {
+    if (!seededRef.current) {
+      seededRef.current = true;
+      seedParticipants();
+    }
+
     getParticipants().then(setPeople);
     loadHistory();
   }, []);
