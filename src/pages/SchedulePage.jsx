@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getParticipants } from '../db/participants';
 import { saveSchedule, getScheduleByWeek, getScheduleHistory } from '../db/schedules';
 import { generateWeekSchedule } from '../core/schedule/generateWeekSchedule';
+import { getMeta, setMeta } from '../db/meta';
 
 function getMonday(dateStr) {
   const d = new Date(dateStr);
@@ -23,18 +24,24 @@ function SchedulePage() {
     loadHistory();
   }, []);
 
-  function createSchedule() {
+  async function createSchedule() {
     if (!people.length) return;
-    console.log('WEEK:', week);
+
+    const meta = await getMeta('rotationOffset');
+    const rotationOffset = meta?.value || 0;
+
     const newSchedule = generateWeekSchedule({
       people,
       weekStart: week,
+      rotationOffset,
     });
 
-    saveSchedule(newSchedule).then(() => {
-      setSchedule(newSchedule);
-      loadHistory();
-    });
+    await saveSchedule(newSchedule);
+
+    await setMeta('rotationOffset', rotationOffset + 1);
+
+    setSchedule(newSchedule);
+    loadHistory();
   }
 
   function loadSchedule(weekStart) {

@@ -1,20 +1,19 @@
-export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1 }) {
+export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1, rotationOffset = 0 }) {
   if (!weekStart) {
     throw new Error('weekStart is required');
   }
 
   const days = getWeekDays(weekStart);
   const assignments = {};
+  const totalPeople = people.length;
 
-  let index = 0;
-
-  days.forEach((day) => {
+  days.forEach((day, dayIndex) => {
     assignments[day] = [];
 
-    for (let i = 0; i < shiftsPerDay; i++) {
-      const person = people[index % people.length];
-      assignments[day].push(person.id);
-      index++;
+    for (let shift = 0; shift < shiftsPerDay; shift++) {
+      const index = (rotationOffset + dayIndex + shift * days.length) % totalPeople;
+
+      assignments[day].push(people[index].id);
     }
   });
 
@@ -22,14 +21,10 @@ export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1 }) {
     weekStart,
     createdAt: Date.now(),
     assignments,
+    rotationOffset, // сохраняем для истории
   };
 }
 
-/**
- * Возвращает массив из 7 дней недели
- * начиная с понедельника
- * в формате YYYY-MM-DD
- */
 function getWeekDays(weekStart) {
   const result = [];
   const start = new Date(weekStart);
