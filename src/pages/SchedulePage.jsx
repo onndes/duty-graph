@@ -4,6 +4,7 @@ import { saveSchedule, getScheduleByWeek, getScheduleHistory } from '../db/sched
 import { generateWeekSchedule } from '../core/schedule/generateWeekSchedule';
 import { getMeta, setMeta } from '../db/meta';
 import { seedParticipants } from '../db/devSeed';
+import createEmptySchedule from '../logic/createEmptySchedule';
 
 function getMonday(dateStr) {
   const d = new Date(dateStr);
@@ -20,6 +21,15 @@ function SchedulePage() {
   const seededRef = useRef(false);
   const loadHistory = () => {
     getScheduleHistory().then(setHistory);
+  };
+  const loadScheduleForWeek = async (weekStart) => {
+    const existing = await getScheduleByWeek(weekStart);
+
+    if (existing) {
+      setSchedule(existing);
+    } else {
+      setSchedule(createEmptySchedule(weekStart, people));
+    }
   };
   useEffect(() => {
     if (!seededRef.current) {
@@ -65,7 +75,11 @@ function SchedulePage() {
           type="date"
           className="form-control mr-2"
           value={week}
-          onChange={(e) => setWeek(getMonday(e.target.value))}
+          onChange={(e) => {
+            const monday = getMonday(e.target.value);
+            setWeek(monday);
+            loadScheduleForWeek(monday);
+          }}
         />
 
         <button className="btn btn-primary" onClick={createSchedule}>
@@ -110,9 +124,11 @@ function SchedulePage() {
                 <td>{i + 1}</td>
                 <td>{p.note}</td>
                 <td>{p.fullName}</td>
-                {Object.keys(schedule.assignments).map((day) => (
-                  <td key={day}>{schedule.assignments[day].includes(p.id) ? '✔' : ''}</td>
-                ))}
+                {Object.keys(schedule.assignments).map((day) => {
+                  const isOnDuty = schedule.assignments[day].includes(p.id);
+
+                  return <td key={day}>{isOnDuty ? '✔' : ''}</td>;
+                })}
               </tr>
             ))}
           </tbody>
