@@ -1,6 +1,6 @@
 import ScheduleCell from './ScheduleCell';
 
-function ScheduleTable({ people, schedule, dragItem, setDragItem, setSchedule }) {
+function ScheduleTable({ people, schedule, reload }) {
   if (!schedule) return null;
 
   return (
@@ -26,11 +26,10 @@ function ScheduleTable({ people, schedule, dragItem, setDragItem, setSchedule })
               <ScheduleCell
                 key={day}
                 day={day}
-                person={p}
-                schedule={schedule}
-                dragItem={dragItem}
-                setDragItem={setDragItem}
-                setSchedule={setSchedule}
+                personId={p.id}
+                isAssigned={schedule.assignments[day]?.includes(p.id)}
+                reload={reload}
+                weekStart={schedule.weekStart}
               />
             ))}
           </tr>

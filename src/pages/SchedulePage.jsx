@@ -13,16 +13,7 @@ function getMonday(dateStr) {
 function SchedulePage() {
   const [week, setWeek] = useState(getMonday(new Date().toISOString()));
 
-  const {
-    people,
-    schedule,
-    history,
-    dragItem,
-    setDragItem,
-    setSchedule,
-    loadScheduleForWeek,
-    createSchedule,
-  } = useSchedule();
+  const { people, schedule, history, loadScheduleForWeek, createSchedule } = useSchedule();
 
   // первый показ графика
   useEffect(() => {
@@ -48,9 +39,7 @@ function SchedulePage() {
         <ScheduleTable
           schedule={schedule}
           people={people}
-          dragItem={dragItem}
-          setDragItem={setDragItem}
-          setSchedule={setSchedule}
+          reload={() => loadScheduleForWeek(week)}
         />
       )}
     </div>

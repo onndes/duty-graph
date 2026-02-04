@@ -5,6 +5,8 @@ import { generateWeekSchedule } from '../core/schedule/generateWeekSchedule';
 import { getMeta, setMeta } from '../db/meta';
 import { seedParticipants } from '../db/devSeed';
 import createEmptySchedule from '../logic/createEmptySchedule';
+import { applyOverrides } from '../core/schedule/applyOverrides';
+import { getOverridesByWeek } from '../db/overrides';
 
 export function useSchedule() {
   const [people, setPeople] = useState([]);
@@ -27,8 +29,17 @@ export function useSchedule() {
 
   // --- загрузка графика по неделе ---
   const loadScheduleForWeek = async (weekStart) => {
-    const existing = await getScheduleByWeek(weekStart);
-    setSchedule(existing || createEmptySchedule(weekStart));
+    const schedule = await getScheduleByWeek(weekStart);
+
+    if (!schedule) {
+      setSchedule(createEmptySchedule(weekStart));
+      return;
+    }
+
+    const overrides = await getOverridesByWeek(weekStart);
+    const finalSchedule = applyOverrides(schedule, overrides);
+
+    setSchedule(finalSchedule);
   };
 
   // --- создание графика ---
@@ -51,6 +62,8 @@ export function useSchedule() {
     const newSchedule = generateWeekSchedule({
       people,
       weekStart,
+      history,
+      overrides: await getOverridesByWeek(weekStart),
       rotationOffset,
     });
 

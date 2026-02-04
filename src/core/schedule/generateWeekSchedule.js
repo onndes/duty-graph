@@ -19,7 +19,14 @@ function calculatePenalty({ stats, date }) {
   return penalty;
 }
 
-export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1, rotationOffset = 0 }) {
+export function generateWeekSchedule({
+  people,
+  weekStart,
+  history = [],
+  overrides = [],
+  shiftsPerDay = 1,
+  rotationOffset = 0,
+}) {
   if (!weekStart) {
     throw new Error('weekStart is required');
   }
@@ -34,6 +41,40 @@ export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1, rota
       unavailableDays: new Set(),
     };
   });
+
+  // --- 1. считаем авто-графики из истории ---
+  history.forEach((schedule) => {
+    Object.entries(schedule.assignments).forEach(([date, peopleIds]) => {
+      peopleIds.forEach((personId) => {
+        if (!statsByPerson[personId]) return;
+
+        statsByPerson[personId].totalShifts += 1;
+        statsByPerson[personId].lastShiftDate = statsByPerson[personId].lastShiftDate
+          ? Math.max(statsByPerson[personId].lastShiftDate, date)
+          : date;
+      });
+    });
+  });
+
+  // --- 2. применяем overrides ---
+  overrides.forEach((o) => {
+    const stats = statsByPerson[o.personId];
+    if (!stats) return;
+
+    if (o.type === 'remove') {
+      stats.totalShifts = Math.max(0, stats.totalShifts - 1);
+    }
+
+    if (o.type === 'add') {
+      stats.totalShifts += 1;
+      stats.lastShiftDate = stats.lastShiftDate ? Math.max(stats.lastShiftDate, o.date) : o.date;
+    }
+
+    if (o.type === 'unavailable') {
+      stats.unavailableDays.add(o.date);
+    }
+  });
+
   days.forEach((day, dayIndex) => {
     assignments[day] = [];
 
@@ -52,15 +93,18 @@ export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1, rota
             return a.penalty - b.penalty;
           }
 
-          // tie-breaker: лестничный сдвиг
+          // если есть история — НЕ используем rotationOffset
+          if (history.length > 0) {
+            return 0;
+          }
+
+          // fallback: чистая лестница ТОЛЬКО для первой недели
           const aIndex = people.findIndex((p) => p.id === a.person.id);
           const bIndex = people.findIndex((p) => p.id === b.person.id);
 
-          const offset = (rotationOffset + dayIndex) % people.length;
-
           return (
-            ((aIndex - offset + people.length) % people.length) -
-            ((bIndex - offset + people.length) % people.length)
+            ((aIndex - dayIndex + people.length) % people.length) -
+            ((bIndex - dayIndex + people.length) % people.length)
           );
         });
 
