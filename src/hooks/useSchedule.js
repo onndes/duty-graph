@@ -33,20 +33,34 @@ export function useSchedule() {
 
   // --- создание графика ---
   const createSchedule = async (weekStart) => {
-    if (!people.length) return;
+    if (!people.length || !weekStart) return;
 
+    // 1. Проверяем: есть ли уже график для этой недели
+    const existing = await getScheduleByWeek(weekStart);
+    if (existing) {
+      // График уже есть — просто показываем его
+      setSchedule(existing);
+      return;
+    }
+
+    // 2. Берём rotationOffset ТОЛЬКО для новой недели
     const meta = await getMeta('rotationOffset');
     const rotationOffset = meta?.value || 0;
 
+    // 3. Генерируем новый график
     const newSchedule = generateWeekSchedule({
       people,
       weekStart,
       rotationOffset,
     });
 
+    // 4. Сохраняем
     await saveSchedule(newSchedule);
+
+    // 5. Увеличиваем offset ТОЛЬКО потому что неделя новая
     await setMeta('rotationOffset', rotationOffset + 1);
 
+    // 6. Обновляем состояние
     setSchedule(newSchedule);
     getScheduleHistory().then(setHistory);
   };
