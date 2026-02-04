@@ -26,9 +26,16 @@ export function generateWeekSchedule({ people, weekStart, shiftsPerDay = 1, rota
 }
 
 function getWeekDays(weekStart) {
-  const result = [];
-  const start = new Date(weekStart);
+  if (!weekStart) {
+    throw new Error('getWeekDays: weekStart is empty');
+  }
 
+  const start = new Date(weekStart);
+  if (isNaN(start.getTime())) {
+    throw new Error(`getWeekDays: invalid date "${weekStart}"`);
+  }
+
+  const result = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
