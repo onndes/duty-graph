@@ -1,6 +1,5 @@
-/**
- * Применяет ручные overrides поверх автоматического графика
- */
+// Применяет ручные overrides поверх автоматического графика
+
 export function applyOverrides(schedule, overrides) {
   if (!schedule) return schedule;
 

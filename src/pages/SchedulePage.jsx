@@ -2,13 +2,7 @@ import { useEffect, useState } from 'react';
 import ScheduleTable from '../components/schedule/ScheduleTable';
 import ScheduleHeader from '../components/schedule/ScheduleHeader';
 import { useSchedule } from '../hooks/useSchedule';
-
-function getMonday(dateStr) {
-  const d = new Date(dateStr);
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() - day + 1);
-  return d.toISOString().slice(0, 10);
-}
+import getMonday from '../utils/getMonday';
 
 function SchedulePage() {
   const [week, setWeek] = useState(getMonday(new Date().toISOString()));

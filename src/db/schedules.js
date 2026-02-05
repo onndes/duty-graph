@@ -1,7 +1,6 @@
 import { db } from './index';
 
-
-// сохранить график
+// сохранить/добавить график
 export function saveSchedule(schedule) {
   return db.schedules.put(schedule);
 }

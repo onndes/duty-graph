@@ -35,20 +35,20 @@ function Participants({
       </form>
 
       {/* List */}
-      <table className="table table-sm table-bordered">
+      <table className="table table-sm table-bordered table-hover">
         <thead>
           <tr>
+            <th style={{ maxWidth: '80px' }}>Примітка</th>
             <th>ПІБ</th>
-            <th>Примітка</th>
             <th style={{ width: '40px' }}></th>
           </tr>
         </thead>
         <tbody>
           {people.map((p) => (
             <tr key={p.id}>
+              <td style={{ maxWidth: '80px' }}>{p.note}</td>
               <td>{p.fullName}</td>
-              <td>{p.note}</td>
-              <td>
+              <td style={{ width: '40px' }}>
                 <button className="btn btn-sm btn-outline-danger" onClick={() => onDelete(p.id)}>
                   ✕
                 </button>

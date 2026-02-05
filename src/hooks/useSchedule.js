@@ -22,7 +22,6 @@ export function useSchedule() {
       seededRef.current = true;
       seedParticipants();
     }
-
     getParticipants().then(setPeople);
     getScheduleHistory().then(setHistory);
   }, []);

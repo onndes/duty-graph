@@ -1,10 +1,6 @@
 import { useEffect, useState } from 'react';
 import Participants from '../components/Participants';
-import {
-  getParticipants,
-  addParticipant,
-  removeParticipant,
-} from '../db/participants';
+import { getParticipants, addParticipant, removeParticipant } from '../db/participants';
 
 function ParticipantsPage() {
   const [people, setPeople] = useState([]);

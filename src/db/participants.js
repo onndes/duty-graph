@@ -6,8 +6,8 @@ export function addParticipant(fullName, note = '') {
   return db.participants.add({
     fullName,
     note,
-    blockedDays: [],
-    preferredDays: [],
+    // blockedDays: [], // для будущего функционала
+    // preferredDays: [], // для будущего функционала
   });
 }
 
@@ -22,8 +22,8 @@ export function removeParticipant(id) {
 }
 
 // блокировать день
-export function blockDay(participantId, date) {
-  return db.participants.update(participantId, {
-    blockedDays: Dexie.add(date),
-  });
-}
+// export function blockDay(participantId, date) {
+//   return db.participants.update(participantId, {
+//     blockedDays: Dexie.add(date),
+//   });
+// }
