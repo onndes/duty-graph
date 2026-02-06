@@ -12,8 +12,6 @@ function ScheduleCell({
   openCell,
   closeCell,
 }) {
-  // const [open, setOpen] = useState(false);
-
   const handleAdd = async () => {
     await addOverride({
       weekStart,
@@ -56,17 +54,7 @@ function ScheduleCell({
       {isAssigned ? '●' : ''}
 
       {isOpen === true && (
-        <div
-          className="cell-popover"
-          onClick={(e) => {
-            e.stopPropagation();
-            // если кликнули вне кнопок, закрываем поповер
-
-            if (e.target === e.currentTarget) {
-              closeCell();
-            }
-          }}
-        >
+        <div className="cell-popover" onClick={(e) => e.stopPropagation()}>
           <button onClick={handleAdd}>➕ Поставить</button>
           <button onClick={handleRemove}>➖ Убрать</button>
           <button onClick={handleUnavailable}>🚫 Отсутствует</button>
