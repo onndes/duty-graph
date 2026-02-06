@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import ScheduleCell from './ScheduleCell';
 
 function ScheduleTable({ people, schedule, reload }) {
+  const [openedCell, setOpenedCell] = useState(null);
   if (!schedule) return null;
 
   return (
@@ -30,6 +32,9 @@ function ScheduleTable({ people, schedule, reload }) {
                 isAssigned={schedule.assignments[day]?.includes(p.id)}
                 reload={reload}
                 weekStart={schedule.weekStart}
+                isOpen={openedCell?.day === day && openedCell?.personId === p.id}
+                openCell={() => setOpenedCell({ day, personId: p.id })}
+                closeCell={() => setOpenedCell(null)}
               />
             ))}
           </tr>

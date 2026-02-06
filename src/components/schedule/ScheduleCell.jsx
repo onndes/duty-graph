@@ -1,19 +1,27 @@
-import { useState } from 'react';
+// import { useState } from 'react';
 import { addOverride } from '../../db/overrides';
 import './ScheduleCell.css';
 
-function ScheduleCell({ day, weekStart, personId, isAssigned, reload }) {
-  const [open, setOpen] = useState(false);
+function ScheduleCell({
+  day,
+  weekStart,
+  personId,
+  isAssigned,
+  reload,
+  isOpen,
+  openCell,
+  closeCell,
+}) {
+  // const [open, setOpen] = useState(false);
 
   const handleAdd = async () => {
-    console.log('ADD CLICK', { weekStart, day, personId });
     await addOverride({
       weekStart,
       personId,
       date: day,
       type: 'add',
     });
-    setOpen(false);
+    closeCell();
     reload();
   };
 
@@ -24,7 +32,7 @@ function ScheduleCell({ day, weekStart, personId, isAssigned, reload }) {
       date: day,
       type: 'remove',
     });
-    setOpen(false);
+    closeCell();
     reload();
   };
 
@@ -35,16 +43,30 @@ function ScheduleCell({ day, weekStart, personId, isAssigned, reload }) {
       date: day,
       type: 'unavailable',
     });
-    setOpen(false);
+    closeCell();
     reload();
   };
 
+  const handleClickCell = () => {
+    openCell();
+  };
+
   return (
-    <td className={`schedule-cell ${isAssigned ? 'assigned' : ''}`} onClick={() => setOpen(true)}>
+    <td className={`schedule-cell ${isAssigned ? 'assigned' : ''}`} onClick={handleClickCell}>
       {isAssigned ? '●' : ''}
 
-      {open && (
-        <div className="cell-popover" onClick={(e) => e.stopPropagation()}>
+      {isOpen === true && (
+        <div
+          className="cell-popover"
+          onClick={(e) => {
+            e.stopPropagation();
+            // если кликнули вне кнопок, закрываем поповер
+
+            if (e.target === e.currentTarget) {
+              closeCell();
+            }
+          }}
+        >
           <button onClick={handleAdd}>➕ Поставить</button>
           <button onClick={handleRemove}>➖ Убрать</button>
           <button onClick={handleUnavailable}>🚫 Отсутствует</button>
