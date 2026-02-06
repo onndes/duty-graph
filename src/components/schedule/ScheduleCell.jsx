@@ -1,5 +1,5 @@
 // import { useState } from 'react';
-import { addOverride } from '../../db/overrides';
+import { addOverride } from '../../db/overrides.ts';
 import './ScheduleCell.css';
 
 function ScheduleCell({

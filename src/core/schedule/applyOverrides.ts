@@ -1,10 +1,12 @@
+import { ISODate, Override, Schedule } from '../types';
+
 // Применяет ручные overrides поверх автоматического графика
 
-export function applyOverrides(schedule, overrides) {
+export function applyOverrides(schedule: Schedule | null, overrides: Override[]): Schedule | null {
   if (!schedule) return schedule;
 
   // глубокая копия assignments
-  const assignments = {};
+  const assignments: Record<string, number[]> = {};
   Object.entries(schedule.assignments).forEach(([day, people]) => {
     assignments[day] = [...people];
   });

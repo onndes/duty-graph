@@ -1,13 +1,24 @@
+import {
+  Schedule,
+  WeekStartDate,
+  Assignments,
+  ISODate,
+  PersonStats,
+  GenerateArgs,
+  Person,
+} from '../types';
+
 // вычисление штрафов для кандидатов и генерация расписания на неделю
 
 // вычисление штрафа для кандидата на конкретный день
-function calculatePenalty({ stats, date }) {
+function calculatePenalty({ stats, date }: { stats: PersonStats; date: ISODate }): number {
   // 1. основной критерий — сколько всего дежурств
   let penalty = stats.totalShifts;
 
   // 2. мягкий штраф, если дежурил совсем недавно
   if (stats.lastShiftDate) {
-    const daysSince = (new Date(date) - new Date(stats.lastShiftDate)) / (1000 * 60 * 60 * 24);
+    const daysSince =
+      (new Date(date).getTime() - new Date(stats.lastShiftDate).getTime()) / (1000 * 60 * 60 * 24);
 
     if (daysSince < 7) {
       penalty += 1;
@@ -23,7 +34,7 @@ function calculatePenalty({ stats, date }) {
 }
 
 // получить все дни недели, начиная с weekStart (понедельник)
-function getWeekDays(weekStart) {
+function getWeekDays(weekStart: WeekStartDate): ISODate[] {
   // проверяем наличие weekStart
   if (!weekStart) {
     throw new Error('getWeekDays: weekStart is empty');
@@ -36,7 +47,7 @@ function getWeekDays(weekStart) {
   }
 
   // генерируем 7 дней недели
-  const result = [];
+  const result: ISODate[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     // console.log(d);
@@ -53,16 +64,16 @@ export function generateWeekSchedule({
   overrides = [],
   shiftsPerDay = 1,
   rotationOffset = 0,
-}) {
+}: GenerateArgs): Schedule {
   if (!weekStart) {
     throw new Error('weekStart is required');
   }
 
   const days = getWeekDays(weekStart); // получаем все дни недели, начиная с weekStart (понедельник)
 
-  const assignments = {}; // { '2023-10-02': [personId, personId], ... }
+  const assignments: Assignments = {}; // { '2023-10-02': [personId, personId], ... }
   // assignments — назначения на неделю
-  const statsByPerson = {}; // { personId: { totalShifts , lastShiftDate, unavailableDays: Set }, ... }
+  const statsByPerson: Record<number, PersonStats> = {}; // { personId: { totalShifts , lastShiftDate, unavailableDays: Set }, ... }
   // totalShifts — всего дежурств
   // lastShiftDate — дата последнего дежурства
   // unavailableDays — Set с датами недоступности
@@ -86,9 +97,10 @@ export function generateWeekSchedule({
         // обновляем дату последнего дежурства, если она есть, и она больше текущей, или если её нет, то ставим текущую
         // А почему текущую? Потому что мы проходим по истории в порядке от старых графиков к новым, и нам нужно, чтобы в итоге осталась самая последняя дата
         // И да, это может быть не совсем точно, если графики в истории были созданы не в хронологическом порядке, но мы предполагаем, что это не так, и что графики создаются последовательно каждую неделю
-        statsByPerson[personId].lastShiftDate = statsByPerson[personId].lastShiftDate
-          ? Math.max(statsByPerson[personId].lastShiftDate, date)
-          : date;
+        statsByPerson[personId].lastShiftDate =
+          !statsByPerson[personId].lastShiftDate || date > statsByPerson[personId].lastShiftDate
+            ? date
+            : statsByPerson[personId].lastShiftDate;
       });
     });
   });
@@ -109,7 +121,8 @@ export function generateWeekSchedule({
     // увеличиваем общее количество дежурств и обновляем дату последнего дежурства
     if (o.type === 'add') {
       stats.totalShifts += 1;
-      stats.lastShiftDate = stats.lastShiftDate ? Math.max(stats.lastShiftDate, o.date) : o.date;
+      stats.lastShiftDate =
+        !stats.lastShiftDate || o.date > stats.lastShiftDate ? o.date : stats.lastShiftDate;
     }
 
     // добавляем дату в недоступные дни
@@ -127,16 +140,25 @@ export function generateWeekSchedule({
     for (let shift = 0; shift < shiftsPerDay; shift++) {
       // формируем список кандидатов
       const candidates = people
-        .map((p) => ({
-          person: p,
-          // вычисляем штраф для кандидата на этот день
-          penalty: calculatePenalty({
-            stats: statsByPerson[p.id],
-            date: day,
-          }),
-        }))
+        .map((p) => {
+          // p - кандидат, stats - его статистика, если её нет, то возвращаем null, чтобы отфильтровать этого кандидата
+          const stats = statsByPerson[p.id];
+          if (!stats) return null;
+
+          return {
+            person: p,
+            // вычисляем штраф для кандидата на этот день
+            penalty: calculatePenalty({
+              stats: stats,
+              date: day,
+            }),
+          };
+        })
         // отфильтровываем тех, кто не может дежурить в этот день (штраф Infinity) и тех, кто уже назначен на этот день
-        .filter((c) => c.penalty !== Infinity && !assignments[day].includes(c.person.id))
+        .filter(
+          // c - кандидат с его штрафом, мы отфильтровываем тех, у кого штраф Infinity (недоступность) и тех, кто уже назначен на этот день (штраф Infinity из-за оверрайда add)
+          (c): c is { person: Person; penalty: number } => c !== null && c.penalty !== Infinity
+        )
         .sort((a, b) => {
           if (a.penalty !== b.penalty) {
             return a.penalty - b.penalty;
@@ -166,6 +188,7 @@ export function generateWeekSchedule({
 
         // обновляем статистику
         const stats = statsByPerson[selected.id];
+        if (!stats) return;
         stats.totalShifts += 1;
         stats.lastShiftDate = day;
       }
