@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { devInit } from '../dev/devInit';
+
 import { getParticipants } from '../db/participants';
 import { saveSchedule, getScheduleByWeek, getScheduleHistory } from '../db/schedules';
 import { getOverridesByWeek } from '../db/overrides';
-import { getMeta, setMeta } from '../db/meta';
-import { seedParticipants } from '../db/devSeed';
+import { getAllParticipantStates } from '../db/participantStates';
 
 import { generateWeekSchedule } from '../core/schedule/generateWeekSchedule';
 import { applyOverrides } from '../core/schedule/applyOverrides';
+import { resetInactiveParticipantStates } from '../core/schedule/resetParticipantStates';
 
 import createEmptySchedule from '../logic/createEmptySchedule';
 
@@ -37,7 +39,7 @@ export function useSchedule() {
   useEffect(() => {
     if (!seededRef.current) {
       seededRef.current = true;
-      seedParticipants();
+      devInit();
     }
 
     getParticipants().then((rows: ParticipantDB[]) => {
@@ -74,28 +76,25 @@ export function useSchedule() {
   const createSchedule = async (weekStart: WeekStartDate): Promise<void> => {
     if (!people.length) return;
 
-    const existing = await getScheduleByWeek(weekStart);
-    if (existing) {
-      setSchedule(existing);
-      return;
-    }
+    // Reset participant states if inactive for too long
+    await resetInactiveParticipantStates();
 
-    const meta = await getMeta<number>('rotationOffset');
-    const rotationOffset = meta?.value ?? 0;
+    // Load current participant states (source of truth)
+    const allStates = await getAllParticipantStates();
+
+    // Only active participants can be scheduled
+    const activeStates = allStates.filter((state) => state.active);
 
     const newSchedule = generateWeekSchedule({
       people,
+      participantStates: activeStates,
       weekStart,
-      history,
-      overrides: await getOverridesByWeek(weekStart),
-      rotationOffset,
     });
 
     await saveSchedule(newSchedule);
-
-    await setMeta<number>('rotationOffset', rotationOffset + 1);
-
     setSchedule(newSchedule);
+
+    // reload history for UI
     getScheduleHistory().then(setHistory);
   };
 
