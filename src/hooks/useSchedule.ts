@@ -5,7 +5,7 @@ import { devInit } from '../dev/devInit';
 import { getParticipants } from '../db/participants';
 import { saveSchedule, getScheduleByWeek, getScheduleHistory } from '../db/schedules';
 import { getOverridesByWeek } from '../db/overrides';
-import { getAllParticipantStates } from '../db/participantStates';
+import { getAllParticipantStates, upsertParticipantState } from '../db/participantStates';
 
 import { generateWeekSchedule } from '../core/schedule/generateWeekSchedule';
 import { applyOverrides } from '../core/schedule/applyOverrides';
@@ -14,7 +14,8 @@ import { resetInactiveParticipantStates } from '../core/schedule/resetParticipan
 import createEmptySchedule from '../logic/createEmptySchedule';
 
 import type { Person, Schedule, WeekStartDate } from '../core/types';
-import type { ParticipantDB } from '../db/types';
+import type { DayIndex, ParticipantDB } from '../db/types';
+import { getMeta } from '../db/meta';
 
 /**
  * Черновик графика (ещё не сохранён в БД)
@@ -84,14 +85,37 @@ export function useSchedule() {
 
     // Only active participants can be scheduled
     const activeStates = allStates.filter((state) => state.active);
-
+    const meta = await getMeta<number>('rotationSeed');
+    const rotationSeed = meta?.value ?? 0;
     const newSchedule = generateWeekSchedule({
       people,
       participantStates: activeStates,
       weekStart,
+      rotationSeed,
     });
 
     await saveSchedule(newSchedule);
+
+    // Update participant states after schedule generation
+    for (const [date, personIds] of Object.entries(newSchedule.assignments)) {
+      // JS: Sun=0 .. Sat=6
+      const jsDayIndex = new Date(date).getDay();
+      // Normalize to Mon=0 .. Sun=6
+      const dayIndex = ((jsDayIndex + 6) % 7) as DayIndex;
+
+      for (const personId of personIds) {
+        const state = activeStates.find((s) => s.personId === personId);
+        if (!state) continue;
+
+        state.lastAssignedDate = date;
+        state.lastDayIndex = dayIndex;
+        state.totalShifts += 1;
+        state.updatedAt = Date.now();
+
+        await upsertParticipantState(state);
+      }
+    }
+
     setSchedule(newSchedule);
 
     // reload history for UI

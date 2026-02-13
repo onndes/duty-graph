@@ -19,6 +19,9 @@ import type { Assignments, ISODate, Person, WeekStartDate } from '../types';
 /**
  * Returns ISO dates (yyyy-mm-dd) for the given week start.
  */
+
+const MAX_SHIFTS_PER_DAY = 1;
+
 function getWeekDays(weekStart: WeekStartDate): ISODate[] {
   const start = new Date(weekStart);
   if (isNaN(start.getTime())) {
@@ -47,6 +50,39 @@ function initAssignments(days: ISODate[]): Assignments {
 }
 
 /**
+ * Finds the nearest available day index for assignment.
+ *
+ * Uses symmetric search around the preferred day:
+ * 0, +1, -1, +2, -2, ...
+ */
+function findAvailableDayIndex(
+  preferredDayIndex: number,
+  days: ISODate[],
+  assignments: Assignments
+): number | null {
+  const totalDays = days.length;
+
+  for (let offset = 0; offset < totalDays; offset++) {
+    const candidates =
+      offset === 0
+        ? [preferredDayIndex]
+        : [
+            (preferredDayIndex + offset) % totalDays,
+            (preferredDayIndex - offset + totalDays) % totalDays,
+          ];
+
+    for (const dayIndex of candidates) {
+      const day = days[dayIndex];
+      if (assignments[day].length < MAX_SHIFTS_PER_DAY) {
+        return dayIndex;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Generates a weekly duty schedule.
  *
  * TEMPORARY LOGIC:
@@ -58,10 +94,12 @@ export function generateWeekSchedule({
   people,
   participantStates,
   weekStart,
+  rotationSeed,
 }: {
   people: Person[];
   participantStates: ParticipantState[];
   weekStart: WeekStartDate;
+  rotationSeed: number;
 }): {
   weekStart: WeekStartDate;
   createdAt: number;
@@ -74,15 +112,43 @@ export function generateWeekSchedule({
   const days = getWeekDays(weekStart);
   const assignments = initAssignments(days);
 
-  // Use ONLY active participant states
   const activeStates = participantStates
     .filter((state) => state.active)
     .sort((a, b) => a.personId - b.personId);
 
-  // Temporary naive assignment logic
-  activeStates.forEach((state, index) => {
-    const dayIndex = index % days.length;
-    const day = days[dayIndex];
+  // Apply rotation seed to change processing order between weeks
+  const rotatedStates = [
+    ...activeStates.slice(rotationSeed % activeStates.length),
+    ...activeStates.slice(0, rotationSeed % activeStates.length),
+  ];
+
+  /**
+   * Logical day rotation (Variant 2).
+   *
+   * Rules:
+   * - If participant has lastDayIndex → keep the same logical day
+   * - If not → assign sequentially from Monday (index 0)
+   */
+  let fallbackIndex = 0;
+
+  activeStates.forEach((state) => {
+    let preferredDayIndex: number;
+
+    if (state.lastDayIndex !== null) {
+      preferredDayIndex = state.lastDayIndex;
+    } else {
+      preferredDayIndex = fallbackIndex % days.length;
+      fallbackIndex += 1;
+    }
+
+    const resolvedDayIndex = findAvailableDayIndex(preferredDayIndex, days, assignments);
+
+    if (resolvedDayIndex === null) {
+      // No available slot in this week (should not happen with sane limits)
+      return;
+    }
+
+    const day = days[resolvedDayIndex];
     assignments[day].push(state.personId);
   });
 
